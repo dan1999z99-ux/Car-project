@@ -1,0 +1,153 @@
+#include <Servo.h> 
+ 
+// Line sensors 
+#define LEFT_SENSOR 2 
+#define RIGHT_SENSOR 3 
+ 
+// Servo 
+#define SERVO_PIN 4 
+ 
+// Motor speed pins 
+#define ENA 5 // Left motor speed 
+#define ENB 6 // Right motor speed 
+ 
+// Motor direction pins 
+#define IN1 8 // Left motor 
+#define IN2 9 
+#define IN3 10 // Right motor 
+#define IN4 11 
+ 
+// Ultrasonic sensor 
+#define TRIG_PIN 12 
+#define ECHO_PIN 13 
+ 
+Servo ultrasonicServo; 
+ 
+// Settings 
+const int NORMAL_SPEED = 150; const int TURN_SPEED = 140; 
+const int SLOW_SPEED = 110; 
+ 
+const int OBSTACLE_DISTANCE = 15; // cm 
+const int SERVO_FRONT = 90; 
+ 
+// Sensor logic const int BLACK = LOW; 
+const int WHITE = HIGH; 
+ 
+void setup() { Serial.begin(9600); 
+ 
+pinMode(LEFT_SENSOR, INPUT); 
+pinMode(RIGHT_SENSOR, INPUT); 
+ 
+pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT); 
+ 
+pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT); pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT); 
+ 
+pinMode(TRIG_PIN, OUTPUT); 
+pinMode(ECHO_PIN, INPUT); 
+ 
+ultrasonicServo.attach(SERVO_PIN); 
+ultrasonicServo.write(SERVO_FRONT); 
+ 
+stopMotors(); 
+ 
+Serial.println("Line Following Car Started"); 
+} 
+ 
+void loop() { 
+ultrasonicServo.write(SERVO_FRONT); 
+ 
+int distance = getDistance(); Serial.print("Distance: "); 
+Serial.print(distance); 
+Serial.println(" cm"); 
+ 
+// Stop if object is detected 
+if (distance > 0 && distance <= OBSTACLE_DISTANCE) { stopMotors(); 
+Serial.println("Object detected - STOP"); 
+ 
+// Wait until object is removed while (true) { 
+distance = getDistance(); 
+ 
+if (distance > OBSTACLE_DISTANCE || distance == 0) { Serial.println("Object removed - Continue"); delay(300); 
+break; 
+} 
+ 
+stopMotors(); 
+delay(100); 
+} 
+} 
+ 
+int leftValue = digitalRead(LEFT_SENSOR); 
+int rightValue = digitalRead(RIGHT_SENSOR); 
+ 
+bool leftBlack = (leftValue == BLACK); 
+bool rightBlack = (rightValue == BLACK); 
+ 
+Serial.print("Left: "); 
+Serial.print(leftValue); 
+Serial.print(" Right: "); 
+Serial.println(rightValue); 
+ 
+// Line following logic if (!leftBlack && !rightBlack) { 
+// Both sensors on white, black line is between sensors moveForward(NORMAL_SPEED); 
+Serial.println("Forward"); 
+} 
+else if (leftBlack && !rightBlack) { // Left sensor sees black, turn left turnLeft(); 
+Serial.println("Turn Left"); 
+} 
+else if (!leftBlack && rightBlack) { // Right sensor sees black, turn right turnRight(); 
+Serial.println("Turn Right"); 
+} 
+else if (leftBlack && rightBlack) { 
+// Both sensors see black, move slowly forward moveForward(SLOW_SPEED); 
+Serial.println("Both black - Slow Forward"); 
+} 
+ 
+delay(50); 
+} 
+ 
+// Ultrasonic distance function int getDistance() { digitalWrite(TRIG_PIN, LOW); 
+delayMicroseconds(2); 
+ 
+digitalWrite(TRIG_PIN, HIGH); delayMicroseconds(10); 
+digitalWrite(TRIG_PIN, LOW); 
+ 
+long duration = pulseIn(ECHO_PIN, HIGH, 25000); 
+ 
+if (duration == 0) { 
+return 0; 
+} 
+ 
+int distance = duration * 0.034 / 2; return distance; 
+} 
+ 
+// Motor control functions void moveForward(int speedValue) { digitalWrite(IN1, HIGH); 
+digitalWrite(IN2, LOW); 
+ 
+digitalWrite(IN3, HIGH); 
+digitalWrite(IN4, LOW); 
+ 
+analogWrite(ENA, speedValue); analogWrite(ENB, speedValue); 
+} 
+ 
+void turnLeft() { digitalWrite(IN1, LOW); digitalWrite(IN2, LOW); 
+ 
+digitalWrite(IN3, HIGH); 
+digitalWrite(IN4, LOW); 
+ 
+analogWrite(ENA, 0); 
+analogWrite(ENB, TURN_SPEED); 
+} 
+ 
+void turnRight() { digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW); digitalWrite(IN3, LOW); digitalWrite(IN4, LOW); 
+ 
+analogWrite(ENA, TURN_SPEED); 
+analogWrite(ENB, 0); 
+} 
+ 
+void stopMotors() { digitalWrite(IN1, LOW); digitalWrite(IN2, LOW); 
+ 
+digitalWrite(IN3, LOW); digitalWrite(IN4, LOW); 
+ 
+analogWrite(ENA, 0); analogWrite(ENB, 0); 
+} 
+ 
